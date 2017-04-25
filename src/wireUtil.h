@@ -22,8 +22,6 @@ template <typename REGTYPE, typename DATATYPE = uint8_t>
 class wireUtil
 {
 public:
-	// wireUtil() {}
-	// ~wireUtil() {}
 	/**
 	 * @brief Attach a function to be called on a read timeout
 	 *
