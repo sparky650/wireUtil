@@ -22,8 +22,8 @@ template <typename REGTYPE, typename DATATYPE = uint8_t>
 class wireUtil
 {
 public:
-	wireUtil() {}
-	~wireUtil() {}
+	// wireUtil() {}
+	// ~wireUtil() {}
 	/**
 	 * @brief Attach a function to be called on a read timeout
 	 *
@@ -200,7 +200,7 @@ bool wireUtil<REGTYPE, DATATYPE>::readRegisters(REGTYPE reg, DATATYPE *buffer, u
 
 	Wire.requestFrom(address, (uint8_t) bufferSize);
 
-	while (Wire.available() < bufferSize)
+	while (Wire.available() < (int8_t)bufferSize)
 	{
 		if (abortTime < millis())
 		{
