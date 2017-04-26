@@ -1,7 +1,7 @@
 /**
  * @file	wireUtil.h
  * @author	Keegan Morrow
- * @version	1.1.3
+ * @version	1.1.4
  * @brief Utility base class for reading and writing registers on i2c devices
  *
  */
@@ -37,6 +37,8 @@ public:
 
 	unsigned long timeoutTime; ///< Amount of time to wait for a successful read
 	bool timeoutFlag; ///< Set to true if there is a timeout event, reset on the next read
+
+	bool enable; ///< Set to false to disable communication
 
 	/**
 	 * @brief Safe method to read the state of the timeout flag
@@ -83,6 +85,7 @@ template <typename REGTYPE, typename DATATYPE>
 void wireUtil<REGTYPE, DATATYPE>::begin(uint8_t address)
 {
 	this->address = address;
+	enable = true;
 	Wire.begin();
 }
 
@@ -127,6 +130,7 @@ bool wireUtil<REGTYPE, DATATYPE>::writeRegister(REGTYPE reg, DATATYPE data)
 template <typename REGTYPE, typename DATATYPE>
 bool wireUtil<REGTYPE, DATATYPE>::writeRegisters(REGTYPE reg, DATATYPE *buffer, uint8_t len)
 {
+	if (!enable) { return false; }
 	Wire.beginTransmission(address);
 	Wire.write(reg);
 	for (uint8_t i = 0; i < len; i++)
@@ -155,6 +159,7 @@ bool wireUtil<REGTYPE, DATATYPE>::writeRegisters(REGTYPE reg, DATATYPE *buffer, 
 template <typename REGTYPE, typename DATATYPE>
 DATATYPE wireUtil<REGTYPE, DATATYPE>::readRegister(REGTYPE reg)
 {
+	if (!enable) { return 0x00; }
 	unsigned long abortTime;
 	Wire.beginTransmission(address);
 	Wire.write((uint8_t)reg);
@@ -187,6 +192,7 @@ DATATYPE wireUtil<REGTYPE, DATATYPE>::readRegister(REGTYPE reg)
 template <typename REGTYPE, typename DATATYPE>
 bool wireUtil<REGTYPE, DATATYPE>::readRegisters(REGTYPE reg, DATATYPE *buffer, uint8_t len)
 {
+	if (!enable) { return false; }
 	Wire.beginTransmission(address);
 	Wire.write((uint8_t)reg);
 	Wire.endTransmission(false);
