@@ -1,13 +1,12 @@
 /**
  * @file	wireUtil.h
  * @author	Keegan Morrow
- * @version	1.1.4
+ * @version	1.2.0
  * @brief Utility base class for reading and writing registers on i2c devices
  *
  */
 
-#ifndef __wireUtil_h_
-#define __wireUtil_h_
+#pragma once
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -34,6 +33,12 @@ public:
 	 * @param errorHandler Pointer to a 'void f(uint8_t)' function. This will be passed the Wire status.
 	 */
 	void attachErrorHandler(void (*errorHandler)(uint8_t)) {this->errorHandler = errorHandler;}
+	/**
+	* @brief Attach a function that will be called before any I2C communication
+	*
+	* @param onCommHook Pointer to a 'void f(void)' function.
+	*/
+	void attachCommHook(void (*onCommHook)(void)) {this->onCommHook = onCommHook;}
 
 	unsigned long timeoutTime; ///< Amount of time to wait for a successful read
 	bool timeoutFlag; ///< Set to true if there is a timeout event, reset on the next read
@@ -67,14 +72,15 @@ protected:
 private:
 	void (*timeOutHandler)(void);
 	void (*errorHandler)(uint8_t);
+	void (*onCommHook)(void);
 	void writeAsBytes(DATATYPE);
 	DATATYPE readAsBytes();
 };
 
 /*
-* Note: Member functions that use template must be
-* defined in this file.
-*/
+ * Note: Member functions that use template must be
+ * defined in this file.
+ */
 
 /**
  * @brief Initialize the chip at a specific address
@@ -102,6 +108,7 @@ template <typename REGTYPE, typename DATATYPE>
 void wireUtil<REGTYPE, DATATYPE>::begin(uint8_t address, uint8_t SDApin, uint8_t SCLpin)
 {
 	this->address = address;
+	enable = true;
 	Wire.begin(SDApin, SCLpin);
 }
 #endif // ARDUINO_ARCH_ESP8266
@@ -131,6 +138,7 @@ template <typename REGTYPE, typename DATATYPE>
 bool wireUtil<REGTYPE, DATATYPE>::writeRegisters(REGTYPE reg, DATATYPE *buffer, uint8_t len)
 {
 	if (!enable) { return false; }
+	if (onCommHook != NULL) (*onCommHook)();
 	Wire.beginTransmission(address);
 	Wire.write(reg);
 	for (uint8_t i = 0; i < len; i++)
@@ -161,6 +169,7 @@ DATATYPE wireUtil<REGTYPE, DATATYPE>::readRegister(REGTYPE reg)
 {
 	if (!enable) { return 0x00; }
 	unsigned long abortTime;
+	if (onCommHook != NULL) (*onCommHook)();
 	Wire.beginTransmission(address);
 	Wire.write((uint8_t)reg);
 	Wire.endTransmission(false);
@@ -193,6 +202,7 @@ template <typename REGTYPE, typename DATATYPE>
 bool wireUtil<REGTYPE, DATATYPE>::readRegisters(REGTYPE reg, DATATYPE *buffer, uint8_t len)
 {
 	if (!enable) { return false; }
+	if (onCommHook != NULL) (*onCommHook)();
 	Wire.beginTransmission(address);
 	Wire.write((uint8_t)reg);
 	Wire.endTransmission(false);
@@ -204,7 +214,7 @@ bool wireUtil<REGTYPE, DATATYPE>::readRegisters(REGTYPE reg, DATATYPE *buffer, u
 
 	Wire.requestFrom(address, (uint8_t) bufferSize);
 
-	while (Wire.available() < (int8_t)bufferSize)
+	while (Wire.available() < (int8_t)bufferSize) // buffersize is cast to signed to eliminate a compiler warning
 	{
 		if (abortTime < millis())
 		{
@@ -214,7 +224,7 @@ bool wireUtil<REGTYPE, DATATYPE>::readRegisters(REGTYPE reg, DATATYPE *buffer, u
 		}
 	}
 
-	for (uint8_t i = 0 ; i < len ; i++)
+	for (auto i = 0 ; i < len ; i++)
 	{
 		if (sizeof(DATATYPE) == 1) { buffer[i] = Wire.read(); }
 		else { buffer[i] = readAsBytes(); }
@@ -303,5 +313,3 @@ DATATYPE wireUtil<REGTYPE, DATATYPE>::readAsBytes()
 	}
 	return d;
 }
-
-#endif // __wireUtil_h_
